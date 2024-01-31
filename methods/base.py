@@ -266,9 +266,10 @@ class CLTrainer():
                                                      backdoor_loader=test_back_loader,
                                                      )
 
-            print('[{}-epoch] time:{:.3f} | knn acc: {:.3f} | back acc: {:.3f} | loss:{:.3f} | cl_loss:{:.3f}'.format(
+            print('[{}-epoch] time:{:.3f} | colorspace: {} | knn acc: {:.3f} | back acc: {:.3f} | loss:{:.3f} | cl_loss:{:.3f}'.format(
                 epoch + 1,
                 time.time() - start,
+                self.args.ctype,
                 knn_acc, back_acc, losses.avg,
                 cl_losses.avg))
 
@@ -309,6 +310,52 @@ class CLTrainer():
 
             print('last epoch saved')
 
+    def augment_color(self, data, ctype="YUV"):
+        if ctype == "RGB":
+            return data
+        if ctype == "YUV":
+            return kornia.color.rgb_to_yuv(data)
+        if ctype == "Y":
+            data = kornia.color.rgb_to_yuv(data)
+            data[:, 1, ...] = data[:, 0, ...]
+            data[:, 2, ...] = data[:, 0, ...]
+            return data
+        if ctype == "U":
+            data = kornia.color.rgb_to_yuv(data)
+            data[:, 0, ...] = data[:, 1, ...]
+            data[:, 2, ...] = data[:, 1, ...]
+            return data
+        if ctype == "V":
+            data = kornia.color.rgb_to_yuv(data)
+            data[:, 0, ...] = data[:, 2, ...]
+            data[:, 1, ...] = data[:, 2, ...]
+            return data
+        if ctype == "HLS":
+            data = kornia.color.rgb_to_hls(data)
+            data[:, 0, ...] = data[:, 1, ...]
+            data[:, 2, ...] = data[:, 1, ...]
+            return data
+        if ctype == "HSV":
+            data = kornia.color.rgb_to_hsv(data)
+            data[:, 0, ...] = data[:, 2, ...]
+            data[:, 1, ...] = data[:, 2, ...]
+            return data
+        if ctype == "LUV":
+            data = kornia.color.rgb_to_luv(data)
+            data[:, 1, ...] = data[:, 0, ...]
+            data[:, 2, ...] = data[:, 0, ...]
+            return data
+        if ctype == "LAB":
+            data = kornia.color.rgb_to_lab(data)
+            data[:, 1, ...] = data[:, 0, ...]
+            data[:, 2, ...] = data[:, 0, ...]
+            return data
+        if ctype == "YCbCr":
+            data = kornia.color.rgb_to_ycbcr(data)
+            data[:, 1, ...] = data[:, 0, ...]
+            data[:, 2, ...] = data[:, 0, ...]
+            return data
+
     @torch.no_grad()
     def knn_monitor_fre(self, net, memory_data_loader, test_data_loader, epoch, args, k=200, t=0.1, hide_progress=True,
                          classes=-1, subset=False, backdoor_loader=None):
@@ -333,6 +380,7 @@ class CLTrainer():
         # loop test data to predict the label by weighted knn search
         test_bar = tqdm(test_data_loader, desc='kNN', disable=hide_progress)
         for data, target, _ in test_bar:
+            data = self.augment_color(data, self.args.ctype)
             data, target = data.cuda(non_blocking=True), target.cuda(non_blocking=True)
             feature = net(data)
             feature = F.normalize(feature, dim=1)
@@ -351,6 +399,7 @@ class CLTrainer():
             backdoor_top1, backdoor_num = 0.0, 0
             backdoor_test_bar = tqdm(backdoor_loader, desc='kNN', disable=hide_progress)
             for data, target, _ in backdoor_test_bar:
+                data = self.augment_color(data, self.args.ctype)
                 data, target = data.cuda(non_blocking=True), target.cuda(non_blocking=True)
 
                 feature = net(data)
