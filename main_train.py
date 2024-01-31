@@ -93,6 +93,13 @@ parser.add_argument('--blur', action='store_true',
                     help='blur augmentation', default=False)
 parser.add_argument('--value_channel', action='store_true',
                     help='value augmentation', default=False)
+### defense
+parser.add_argument(
+    "--ctype",
+    default="RGB",
+    choices=["RGB", "YUV", "Y", "U", "V", "HLS", "HSV", "LUV", "LAB", "YCbCr"],
+    help="color space used for accuracy calculation",
+)
 
 
 args = parser.parse_args()
