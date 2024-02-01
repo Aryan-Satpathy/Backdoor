@@ -31,21 +31,6 @@ class Subset(torch.utils.data.Subset):
         """Call this only if all attributes of Subset are exhausted."""
         return getattr(self.dataset, name)
 
-# class PoisonAgent:
-#     def __init__(self, args):
-#         self.args = args
-
-#     def construct_experiment(self):
-#         if self.args.poisonkey is None:
-#             init_seed = np.random.randint(0, 2 ** 32 - 1)
-#         else:
-#             init_seed = int(self.args.poisonkey)
-
-#         np.random.seed(init_seed)
-#         print(f'Initializing Poison data (chosen images, examples, sources, labels) with random seed {init_seed}')
-#         self.train_pos_loader, self.test_loader, self.test_pos_loader, self.memory_loader  = self.choose_poisons_randomly()
-
-
 class PoisonAgent():
     def __init__(self, args, fre_agent, trainset, validset, memory_loader, magnitude):
         self.args = args
@@ -101,37 +86,23 @@ class PoisonAgent():
 
         x_train_origin = x_train_tensor.clone().detach()
 
-
-
-
         poison_index = torch.where(y_train_tensor == self.args.target_class)[0]
         poison_index = poison_index[:self.poison_num]
 
-
-        if self.args.threat_model == 'our':
-
+        if self.args.threat_model == 'ctrl':
             x_train_tensor[poison_index], y_train_tensor[poison_index] = self.fre_poison_agent.Poison_Frequency_Diff(x_train_tensor[poison_index], y_train_tensor[poison_index], self.magnitude)
             x_test_pos_tensor, y_test_pos_tensor = self.fre_poison_agent.Poison_Frequency_Diff(x_test_tensor.clone().detach(), y_test_tensor.clone().detach(), self.magnitude)
         
-        elif self.args.threat_model == 'FIBA':
+        elif self.args.threat_model == 'fiba':
             x_train_tensor[poison_index], y_train_tensor[poison_index] = self.fre_poison_agent.Poison_Frequency_FIBA(x_train_tensor[poison_index], y_train_tensor[poison_index], self.magnitude)
             x_test_pos_tensor, y_test_pos_tensor = self.fre_poison_agent.Poison_Frequency_FIBA(x_test_tensor.clone().detach(), y_test_tensor.clone().detach(), self.magnitude)
 
-        elif self.args.threat_model == 'patch':
+        elif self.args.threat_model == 'htba':
             x_train_tensor[poison_index], y_train_tensor[poison_index] = self.fre_poison_agent.Poison_Frequency_patch(x_train_tensor[poison_index], y_train_tensor[poison_index], self.magnitude)
             x_test_pos_tensor, y_test_pos_tensor = self.fre_poison_agent.Poison_Frequency_patch(x_test_tensor.clone().detach(), y_test_tensor.clone().detach(), self.magnitude)
         
         else:
             raise  NotImplementedError
-
-
-
-
-        # index = poison_index[0]
-        #
-        # show_example = torch.cat([x_train_origin[index:index + 1], x_train_tensor[index:index + 1]], dim=0)
-        # view1 = individual_transform(show_example)
-        # view2 = individual_transform(show_example)
 
         y_test_pos_tensor = torch.ones_like(y_test_pos_tensor, dtype=torch.long) * self.args.target_class
 

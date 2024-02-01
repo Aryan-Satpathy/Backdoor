@@ -57,7 +57,7 @@ parser.add_argument('--byol-m', default=0.996, type=float)
 
 ###poisoning
 parser.add_argument('--poisonkey', default=7777, type=int)
-parser.add_argument('--target_class', default=0, type=int)
+parser.add_argument('--target_class', default=1, type=int)
 parser.add_argument('--poison_ratio', default = 0.01, type=float)
 parser.add_argument('--pin_memory', action='store_true', default=False)
 parser.add_argument('--select', action='store_true', default=False)
@@ -66,7 +66,7 @@ parser.add_argument('--trigger_position', nargs ='+', type=int)
 parser.add_argument('--magnitude', default = 100.0, type=float)
 parser.add_argument('--trigger_size', default=5, type=int)
 parser.add_argument('--channel', nargs ='+', type=int)
-parser.add_argument('--threat_model', default='our', choices=['our', 'patch'])
+parser.add_argument('--threat_model', default='our', choices=['ctrl', 'htba', 'fiba'])
 parser.add_argument('--loss_alpha', default = 2.0, type=float)
 parser.add_argument('--strength', default= 1.0, type=float)  ### augmentation strength
 
@@ -104,7 +104,6 @@ parser.add_argument(
 
 args = parser.parse_args()
 
-
 # for Logging
 if args.debug: #### in the debug setting
         args.saved_path = os.path.join("./{}/test".format(args.log_path))
@@ -116,8 +115,8 @@ else:
               args.saved_path = os.path.join("./{}/{}-{}-{}-{}-{}-{}-{}-{}-{}-{}".format(args.log_path, args.dataset, args.method, args.arch, args.poison_ratio, args.magnitude, args.batch_size, args.lr, args.select, args.threat_model, args.trial))
 
 
-if not os.path.exists(args.saved_path):
-    os.makedirs(args.saved_path)
+# if not os.path.exists(args.saved_path):
+#     os.makedirs(args.saved_path)
 
 # tb_logger = tb_logger.Logger(logdir=args.saved_path, flush_secs=2)
 
@@ -190,7 +189,6 @@ def main_worker(gpu,  args):
 
 
     raise NotImplementedError
-
 
 
 if __name__ == '__main__':

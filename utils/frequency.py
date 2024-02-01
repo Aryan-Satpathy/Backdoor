@@ -269,17 +269,17 @@ class PoisonFre():
         self.xfm = DWTForward(J=3, mode='zero', wave='haar')  # Accepts all wave types available to PyWavelets
         self.ifm = DWTInverse(mode='zero', wave='haar')
 
-        path = 'CTRL/trigger.png'
-        try:
-            if args.threat_model == 'patch':
-                path = 'CTRL/trigger2.png'
+        path = f'triggers/{args.threat_model}.png'
         
+        # path = 'triggers/fiba.png'
+        # if args.threat_model == 'htba':
+        #     path = 'htba.png'
+        
+        if args.threat_model in ['htba', 'fiba']:
             self.trigger_pattern = cv2.imread(path)
             self.trigger_pattern = cv2.cvtColor(self.trigger_pattern, cv2.COLOR_RGB2BGR)
 
             self.trigger_pattern = torch.Tensor(self.trigger_pattern / 255.0).permute(2, 0, 1)
-        except:
-            pass
 
     def RGB2YUV(self, x_rgb):
         """
@@ -436,46 +436,6 @@ class PoisonFre():
         if x_train.shape[0] == 0:
             return x_train
 
-
-        # x_train  = x_train * 255.
-
-        #
-        # if self.rgb2yuv:
-        #     x_train = self.RGB2YUV(x_train)
-        #
-        #
-        # transfer to frequency domain
-        # if not dwt:
-        #     x_train = self.DCT(x_train)  # (idx, ch, w, h ）
-
-
-
-        #     #
-        #     for ch in self.channel_list:
-        #         for w in range(0, x_train.shape[2], self.window_size):
-        #             for h in range(0, x_train.shape[3], self.window_size):
-        #                     for pos in self.pos_list:
-        #                             x_train[:, ch, w+pos[0], h+pos[1]] = x_train[:, ch, w+pos[0], h+pos[1]] + magnitude
-
-
-        #     #transfer to time domain
-        #     x_train = self.IDCT(x_train)  # (idx, w, h, ch)
-
-        # else:
-
-        #     yl, yh = self.DWT(x_train)
-
-        #     yh[-1][ :, 1, -1, :, :]  = yh[-1][ :, 1, -1, :, :] + magnitude
-
-        #     x_train = self.IDWT(yl, yh)
-            
-        
-
-
-        #
-        # if self.rgb2yuv:
-        #     x_train = self.YUV2RGB(x_train)
-            
         offt = torch.fft.fftshift(torch.fft.fft2(x_train))
         offt2 = torch.fft.fftshift(torch.fft.fft2(self.trigger_pattern))
 
@@ -509,16 +469,17 @@ class PoisonFre():
 
         x_train  = x_train * 255.
 
+        if self.rgb2yuv:
+            x_train = self.RGB2YUV(x_train)
+
         if not dwt:
             x_train = self.DCT(x_train)  # (idx, ch, w, h ）
 
-
-
-            #
-            for w in range(0, x_train.shape[2], self.window_size):
-                for h in range(0, x_train.shape[3], self.window_size):
+            for ch in self.channel_list:
+                for w in range(0, x_train.shape[2], self.window_size):
+                    for h in range(0, x_train.shape[3], self.window_size):
                         for pos in self.pos_list:
-                                x_train[:, :, w+pos[0], h+pos[1]] = x_train[:, :, w+pos[0], h+pos[1]] + magnitude
+                                x_train[:, ch, w+pos[0], h+pos[1]] = x_train[:, ch, w+pos[0], h+pos[1]] + magnitude
 
 
             #transfer to time domain

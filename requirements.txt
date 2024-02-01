@@ -1,0 +1,14 @@
+kornia
+natsort
+numpy
+opencv_python
+pandas
+Pillow
+pytorch_wavelets
+scipy
+torch
+torchvision
+tqdm
+warmup_scheduler
+PyWavelets
+tensorboard
