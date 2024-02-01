@@ -20,7 +20,7 @@ parser = argparse.ArgumentParser(description='CTRL Training')
 
 
 ### dataloader
-parser.add_argument('--data_path', default='~/data/')
+parser.add_argument('--data_path', default='data/')
 parser.add_argument('--dataset', default='cifar10', choices=['cifar10', 'cifar100', 'imagenet-100'])
 parser.add_argument('--image_size', default = 32, type=int)
 parser.add_argument('--disable_normalize', action='store_true', default=True)
@@ -83,7 +83,7 @@ parser.add_argument('--trial', default='0', type=str)
 ###others
 parser.add_argument('--distributed', action='store_true',
                     help='distributed training')
-parser.add_argument('--gpu', default= None, type=int,
+parser.add_argument('--gpu', default= 0, type=int,
                     help='GPU id to use.')
 parser.add_argument('--seed', default=None, type=int,
                     help='seed for initializing training. ')

@@ -31,6 +31,19 @@ class Subset(torch.utils.data.Subset):
         """Call this only if all attributes of Subset are exhausted."""
         return getattr(self.dataset, name)
 
+# class PoisonAgent:
+#     def __init__(self, args):
+#         self.args = args
+
+#     def construct_experiment(self):
+#         if self.args.poisonkey is None:
+#             init_seed = np.random.randint(0, 2 ** 32 - 1)
+#         else:
+#             init_seed = int(self.args.poisonkey)
+
+#         np.random.seed(init_seed)
+#         print(f'Initializing Poison data (chosen images, examples, sources, labels) with random seed {init_seed}')
+#         self.train_pos_loader, self.test_loader, self.test_pos_loader, self.memory_loader  = self.choose_poisons_randomly()
 
 
 class PoisonAgent():
