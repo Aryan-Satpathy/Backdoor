@@ -15,7 +15,7 @@ Datasets implemented:
 - [x] CIFAR 100
 - [ ] IMAGENET 100 (100 class subset of IMAGENET)
 
-We show a successfull and partly generalizable defense against backdoor attacks in SSL and lay the theortical foundation for defense against backdoor attacks in Semantic Segmentation and Object Detection tasks.
+We show a successful and partly generalizable defense against backdoor attacks in SSL and lay the theoretical foundation for defense against backdoor attacks in Semantic Segmentation and Object Detection tasks.
 
 ## Installation and Requirements
 - Download the repository from [anonymous4openscience](https://anonymous.4open.science/r/Backdoor-028B).
@@ -30,7 +30,7 @@ We show a successfull and partly generalizable defense against backdoor attacks 
     ```
 
 ## Running The Code
-We provide a bash script to run our program with appropiate command-line arguments. 
+We provide a bash script to run our program with appropriate command-line arguments. 
 - Give permission
 ```bash
 chmod +x run.sh
@@ -48,7 +48,7 @@ Results of all experiments are saved in a folder named `saves`. Each experiment 
 ```bash
 tensorboard --logdir=saves
 ```
-When repeating same experiment with different hyperparameters, use `--suffix` option in `run.sh` to prevent overwriting log of previous experiment.
+When repeating the same experiment with different hyperparameters, use `--suffix` option in `run.sh` to prevent overwriting log of previous experiment.
 
 ## To Do
 - [ ] Implement ImageNet 100
