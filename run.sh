@@ -16,7 +16,7 @@ display_help() {
 
 method="simclr"
 mode="poisoned"
-defense=""
+defense="blur"
 dataset="cifar10"
 threat_model="ctrl"
 ctype="RGB"
@@ -101,7 +101,7 @@ elif [ "$defense" == "both" ]; then
     augmentation="--blur --value_channel"
 fi
 
-poison_ratio=0.5
+poison_ratio=1
 if [ "$dataset" != "cifar10" ]; then
     poison_ratio=$(awk "BEGIN {print $poison_ratio / 5; exit}")
 fi
@@ -109,6 +109,28 @@ fi
 # source your virtual environmenet, if any
 # source ../ctrl/bin/activate
 
-MYPATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
+# MYPATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 
-python main_train.py $poisoned --dataset $dataset $augmentation --ctype $ctype --method $method --threat_model ${threat_model} --channel 1 2 --trigger_position 15 31 --poison_ratio $poison_ratio --lr 0.06 --wd 0.0005 --magnitude 100.0 --poisoning --epochs 800 --gpu 0 --window_size 32 --saved_path "${MYPATH}/saves/${job_name}/"
+# python main_train.py $poisoned --dataset $dataset $augmentation --ctype $ctype --method $method --threat_model ${threat_model} --channel 1 2 --trigger_position 15 31 --poison_ratio $poison_ratio --lr 0.06 --wd 0.0005 --magnitude 100.0 --poisoning --epochs 800 --gpu 0 --window_size 32 --saved_path "${MYPATH}/saves/${job_name}/"
+
+sbatch <<EOT
+#!/bin/bash
+#SBATCH -J $job_name                # name of the job
+#SBATCH -p gpu            # name of the partition: available options "gpu"
+#SBATCH --mem=12GB
+#SBATCH -n 6                       # no of processes or tasks
+#SBATCH --gres=gpu:1               # request gpu card: it should be either 1 or 2
+#SBATCH --cpus-per-task=4       # no of threads per process or task
+#SBATCH -t 16:00:00
+#SBATCH --error=/scratch/20ec39057/Backdoor/logs$job_name.err_
+#SBATCH --output=/scratch/20ec39057/Backdoor/logs$job_name.out_
+
+eval "$(conda shell.bash hook)"
+source /home/apps/DL-CondaPy3.7-new/bin/activate ctrl
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/20ec39057/.conda/envs/ctrl/lib
+python main_train.py $poisoned --dataset $dataset $augmentation --method $method --threat_model ${threat_model} --channel 1 2 --trigger_position 15 31 --poison_ratio 1.0 --lr 0.06 --wd 0.0005 --magnitude  50.0 --poisoning --epochs 800 --gpu 0 --window_size 32 --saved_path "/scratch/20ec39057/Backdoor/saves/${job_name}_P1_M50/"
+python main_train.py $poisoned --dataset $dataset $augmentation --method $method --threat_model ${threat_model} --channel 1 2 --trigger_position 15 31 --poison_ratio 1.0 --lr 0.06 --wd 0.0005 --magnitude 200.0 --poisoning --epochs 800 --gpu 0 --window_size 32 --saved_path "/scratch/20ec39057/Backdoor/saves/${job_name}_P1_M200/"
+python main_train.py $poisoned --dataset $dataset $augmentation --method $method --threat_model ${threat_model} --channel 1 2 --trigger_position 15 31 --poison_ratio 1.5 --lr 0.06 --wd 0.0005 --magnitude 100.0 --poisoning --epochs 800 --gpu 0 --window_size 32 --saved_path "/scratch/20ec39057/Backdoor/saves/${job_name}_P15_M100/"
+python main_train.py $poisoned --dataset $dataset $augmentation --method $method --threat_model ${threat_model} --channel 1 2 --trigger_position 15 31 --poison_ratio 2.0 --lr 0.06 --wd 0.0005 --magnitude 100.0 --poisoning --epochs 800 --gpu 0 --window_size 32 --saved_path "/scratch/20ec39057/Backdoor/saves/${job_name}_P2_M100/"
+python main_train.py $poisoned --dataset $dataset $augmentation --method $method --threat_model ${threat_model} --channel 1 2 --trigger_position 15 31 --poison_ratio 3.0 --lr 0.06 --wd 0.0005 --magnitude 100.0 --poisoning --epochs 800 --gpu 0 --window_size 32 --saved_path "/scratch/20ec39057/Backdoor/saves/${job_name}_P3_M100/"
+EOT
