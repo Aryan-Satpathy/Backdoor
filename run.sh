@@ -122,8 +122,8 @@ sbatch <<EOT
 #SBATCH --gres=gpu:1               # request gpu card: it should be either 1 or 2
 #SBATCH --cpus-per-task=4       # no of threads per process or task
 #SBATCH -t 16:00:00
-#SBATCH --error=/scratch/20ec39057/Backdoor/logs$job_name.err_
-#SBATCH --output=/scratch/20ec39057/Backdoor/logs$job_name.out_
+#SBATCH --error=/scratch/20ec39057/Backdoor/logs/$job_name.err_
+#SBATCH --output=/scratch/20ec39057/Backdoor/logs/$job_name.out_
 
 eval "$(conda shell.bash hook)"
 source /home/apps/DL-CondaPy3.7-new/bin/activate ctrl
