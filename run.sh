@@ -106,9 +106,31 @@ if [ "$dataset" != "cifar10" ]; then
     poison_ratio=$(awk "BEGIN {print $poison_ratio / 5; exit}")
 fi
 
-# source your virtual environmenet, if any
-# source ../ctrl/bin/activate
-
 MYPATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 
+sbatch <<EOT
+#!/bin/bash
+#SBATCH -J $job_name                # name of the job
+#SBATCH -p gpu            # name of the partition: available options "gpu"
+#SBATCH --mem=12GB
+#SBATCH -n 6                       # no of processes or tasks
+#SBATCH --gres=gpu:1               # request gpu card: it should be either 1 or 2
+#SBATCH --cpus-per-task=4       # no of threads per process or task
+#SBATCH -t 16:00:00
+#SBATCH --error=${MYPATH}/$job_name.err_
+#SBATCH --output=${MYPATH}/$job_name.out_
+#list of modules you want to use, for example
+
+#module load compiler/cuda/11.7
+#source /scratch/20bt30020/cvpr_plox/.workz/bin/activate
+
+
+# source your virtual environmenet, if any
+# source ../ctrl/bin/activate
+#module load apps/python-package/python/conda-python/3.7_new
+eval "$(conda shell.bash hook)"
+source /home/apps/DL-CondaPy3.7-new/bin/activate ctrl
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/.conda/envs/ctrl/lib
+
 python main_train.py $poisoned --dataset $dataset $augmentation --ctype $ctype --method $method --threat_model ${threat_model} --channel 1 2 --trigger_position 15 31 --poison_ratio $poison_ratio --lr 0.06 --wd 0.0005 --magnitude 100.0 --poisoning --epochs 800 --gpu 0 --window_size 32 --saved_path "${MYPATH}/saves/${job_name}/"
+EOT
