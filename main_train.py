@@ -104,15 +104,15 @@ parser.add_argument(
 
 args = parser.parse_args()
 
-# for Logging
-if args.debug: #### in the debug setting
-        args.saved_path = os.path.join("./{}/test".format(args.log_path))
-else:
-        if  args.trial == 'clean':
-              args.saved_path = os.path.join(
-                  "./{}/{}-{}_{}-{}".format(args.log_path, args.dataset, args.method, args.arch, args.trial))
-        else:
-              args.saved_path = os.path.join("./{}/{}-{}-{}-{}-{}-{}-{}-{}-{}-{}".format(args.log_path, args.dataset, args.method, args.arch, args.poison_ratio, args.magnitude, args.batch_size, args.lr, args.select, args.threat_model, args.trial))
+# # for Logging
+# if args.debug: #### in the debug setting
+#         args.saved_path = os.path.join("./{}/test".format(args.log_path))
+# else:
+#         if  args.trial == 'clean':
+#               args.saved_path = os.path.join(
+#                   "./{}/{}-{}_{}-{}".format(args.log_path, args.dataset, args.method, args.arch, args.trial))
+#         else:
+#               args.saved_path = os.path.join("./{}/{}-{}-{}-{}-{}-{}-{}-{}-{}-{}".format(args.log_path, args.dataset, args.method, args.arch, args.poison_ratio, args.magnitude, args.batch_size, args.lr, args.select, args.threat_model, args.trial))
 
 
 # if not os.path.exists(args.saved_path):
