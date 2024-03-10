@@ -19,7 +19,7 @@ import torchvision.datasets as datasets
 from torchvision.datasets import  VisionDataset
 from kornia import augmentation as aug
 import kornia
-
+from torch.utils.data import Dataset
 import natsort
 
 
@@ -30,6 +30,8 @@ class Subset(torch.utils.data.Subset):
     def __getattr__(self, name):
         """Call this only if all attributes of Subset are exhausted."""
         return getattr(self.dataset, name)
+
+
 
 class PoisonAgent():
     def __init__(self, args, fre_agent, trainset, validset, memory_loader, magnitude):
@@ -62,16 +64,46 @@ class PoisonAgent():
 
         #construct class prototype for each class
 
+        if 'cifar' in self.args.dataset:
 
-        x_train_np, x_test_np = self.trainset.data.astype(np.float32) / 255., self.validset.data.astype(
-            np.float32) / 255.
+            x_train_np, x_test_np = self.trainset.data.astype(np.float32) / 255., self.validset.data.astype(
+                np.float32) / 255.
 
-        x_memory_np =  self.memory_loader.dataset.data.astype(np.float32) / 255.
+            x_memory_np =  self.memory_loader.dataset.data.astype(np.float32) / 255.
+            y_train_np, y_test_np = np.array(self.trainset.targets), np.array(self.validset.targets)
+            y_memory_np = np.array(self.memory_loader.dataset.targets)
+
+
+        elif self.args.dataset == 'imagenet100':
+
+            x_train_np, x_test_np, x_memory_np = [], [], []
+            y_train_np, y_test_np, y_memory_np = [],[],[]
+
+            for img, label in self.trainset:
+                x_train_np.append(np.array(img))
+                y_train_np.append(label)
+
+            for img, label in self.validset:
+                x_test_np.append(np.array(img))
+                y_test_np.append(label)
+
+            for img, label in self.memory_loader.dataset:
+                x_memory_np.append(np.array(img))
+                y_memory_np.append(label)
+        
+            x_train_np = np.array(x_train_np).astype(np.float32)
+            x_train_np/= 255.
+            x_test_np = np.array(x_test_np).astype(np.float32)
+            x_test_np/= 255.
+            x_memory_np = np.array(x_memory_np).astype(np.float32)
+            x_memory_np/= 255. 
+            y_train_np = np.array(y_train_np)
+            y_test_np = np.array(y_test_np)
+            y_memory_np = np.array(y_memory_np)
+              
 
 
 
-        y_train_np, y_test_np = np.array(self.trainset.targets), np.array(self.validset.targets)
-        y_memory_np = np.array(self.memory_loader.dataset.targets)
 
         x_train_tensor, y_train_tensor = torch.tensor(x_train_np), torch.tensor(y_train_np, dtype=torch.long)
         x_test_tensor, y_test_tensor = torch.tensor(x_test_np), torch.tensor(y_test_np, dtype=torch.long)
@@ -80,29 +112,45 @@ class PoisonAgent():
         x_memory_tensor = torch.tensor(x_memory_np)
 
 
-        x_train_tensor = x_train_tensor.permute(0, 3, 1, 2)
-        x_test_tensor = x_test_tensor.permute(0, 3, 1, 2)
-        x_memory_tensor = x_memory_tensor.permute(0, 3, 1, 2)
+        if 'cifar' in self.args.dataset:
+            
+            x_train_tensor = x_train_tensor.permute(0, 3, 1, 2)
+            x_test_tensor = x_test_tensor.permute(0, 3, 1, 2)
+            x_memory_tensor = x_memory_tensor.permute(0, 3, 1, 2)
 
         x_train_origin = x_train_tensor.clone().detach()
+
+
+
 
         poison_index = torch.where(y_train_tensor == self.args.target_class)[0]
         poison_index = poison_index[:self.poison_num]
 
-        if self.args.threat_model == 'ctrl':
+
+        if self.args.threat_model == 'our':
+
             x_train_tensor[poison_index], y_train_tensor[poison_index] = self.fre_poison_agent.Poison_Frequency_Diff(x_train_tensor[poison_index], y_train_tensor[poison_index], self.magnitude)
             x_test_pos_tensor, y_test_pos_tensor = self.fre_poison_agent.Poison_Frequency_Diff(x_test_tensor.clone().detach(), y_test_tensor.clone().detach(), self.magnitude)
         
-        elif self.args.threat_model == 'fiba':
+        elif self.args.threat_model == 'FIBA':
             x_train_tensor[poison_index], y_train_tensor[poison_index] = self.fre_poison_agent.Poison_Frequency_FIBA(x_train_tensor[poison_index], y_train_tensor[poison_index], self.magnitude)
             x_test_pos_tensor, y_test_pos_tensor = self.fre_poison_agent.Poison_Frequency_FIBA(x_test_tensor.clone().detach(), y_test_tensor.clone().detach(), self.magnitude)
 
-        elif self.args.threat_model == 'htba':
+        elif self.args.threat_model == 'patch':
             x_train_tensor[poison_index], y_train_tensor[poison_index] = self.fre_poison_agent.Poison_Frequency_patch(x_train_tensor[poison_index], y_train_tensor[poison_index], self.magnitude)
             x_test_pos_tensor, y_test_pos_tensor = self.fre_poison_agent.Poison_Frequency_patch(x_test_tensor.clone().detach(), y_test_tensor.clone().detach(), self.magnitude)
         
         else:
             raise  NotImplementedError
+
+
+
+
+        # index = poison_index[0]
+        #
+        # show_example = torch.cat([x_train_origin[index:index + 1], x_train_tensor[index:index + 1]], dim=0)
+        # view1 = individual_transform(show_example)
+        # view2 = individual_transform(show_example)
 
         y_test_pos_tensor = torch.ones_like(y_test_pos_tensor, dtype=torch.long) * self.args.target_class
 
@@ -153,12 +201,12 @@ def set_aug_diff(args):
         args.num_classes = 100
         args.save_freq = 100
 
-    elif args.dataset == 'imagenet-100':
+    elif args.dataset == 'imagenet100':
         mean = (0.485, 0.456, 0.406)
         std = (0.229, 0.224, 0.225)
         args.size = 64
         args.save_freq = 100
-        args.num_classes = 100
+        args.num_classes = 9
 
     else:
         raise ValueError(args.dataset)
@@ -191,7 +239,7 @@ def set_aug_diff(args):
         train_tform_list.append(aug.RandomGaussianBlur(3, [0.1, 2], p = 0.5))
         ft_tform_list.append(aug.RandomGaussianBlur(3, [0.1, 2], p = 0.5))
 
-    if 'cifar' in args.dataset   or args.dataset == 'imagenet-100':
+    if 'cifar' in args.dataset   or args.dataset == 'imagenet100':
 
         train_transform = nn.Sequential( *train_tform_list )
         ft_transform = nn.Sequential( *ft_tform_list )
@@ -199,14 +247,25 @@ def set_aug_diff(args):
 
 
     ####################### Define Load Transform ####################
-    if 'cifar' in args.dataset  or args.dataset == 'imagenet-100':
+    if 'cifar' in args.dataset:
         transform_load = transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize(mean,std) if not args.disable_normalize else transforms.Lambda(lambda x: x)])
 
+    if 'imagenet100' in args.dataset:    
+         transform_load = transforms.Compose([
+            transforms.Resize((64,64)),
+            transforms.ToTensor()])
+         
+        #  transform_preprocess = transform_load = transforms.Compose([
+        #     transforms.Resize((64,64)),
+        #     #transforms.CenterCrop(64),
+        #     transforms.ToTensor()])
+        #     #transforms.Normalize(mean,std) if not args.disable_normalize else transforms.Lambda(lambda x: x)])
 
-    else:
-         raise  NotImplementedError
+    # else:
+
+    #     raise  NotImplementedError
 
 
     ####################### Define Datasets #######################
@@ -246,6 +305,35 @@ def set_aug_diff(args):
                                            train=True,
                                            transform=transform_load,
                                            download=False)
+
+    elif args.dataset == 'imagenet100':
+
+        train_path= os.path.join(args.data_path, "train")
+
+        test_path = os.path.join(args.data_path,"val")
+
+        train_dataset = datasets.ImageFolder(root=train_path,
+                                          transform=transform_load,
+                                          
+                                         )
+        
+        ft_dataset = datasets.ImageFolder(root=train_path,
+                                       transform=transform_load,
+                                      )
+        
+        test_dataset = datasets.ImageFolder(root=test_path,
+                                         transform=transform_load,
+                            
+
+                                         )
+        
+        memory_dataset = datasets.ImageFolder(root=train_path,
+                                           transform=transform_load,
+                                          
+                                          )
+
+
+
     else:
 
          raise NotImplementedError
@@ -391,3 +479,84 @@ class CIFAR100(datasets.CIFAR10):
             target = self.target_transform(target)
 
         return target, index
+
+# class Imagenet100Wrapper(Dataset):
+    
+#     def __init__(self, root, transform=None, transform_pre = None):
+#         self.image_folder = datasets.ImageFolder(root=root, transform=transform)
+#         self.images = torch.stack([img for img, _ in self.image_folder])
+#         # self.labels = torch.tensor([label for _, label in self.image_folder]).numpy()
+#         self.targets = ([label for _, label in self.image_folder])
+#         self.pre_image_folder = datasets.ImageFolder(root=root, transform=transform_pre)
+#         self.data = torch.stack([img.permute(1,2,0) for img, _ in self.pre_image_folder]).numpy()
+
+#     def __len__(self):
+#         return len(self.image_folder)
+
+#     def __getitem__(self, idx):
+#         # img, label = self.image_folder[idx]
+#         # return {'image': img, 'label': label}
+#         #  img, target = self.data[idx], self.targets[idx]
+#         img, target = self.images[idx], self.targets[idx]
+#         return img, target, idx
+
+#     def get_target(self, idx):
+#         """Return only the target and its id.
+
+#         Args:
+#             index (int): Index
+
+#         Returns:
+#             tuple: (target, idx) where target is class_index of the target class.
+
+#         """
+#         target = self.targets[idx]
+
+#         if self.target_transform is not None:
+#             target = self.target_transform(target)
+
+#         return target, idx
+# class Imagenet100Wrapper(Dataset):
+#     def __init__(self, root, transform=None, transform_pre=None):
+#         self.root = root
+#         self.transform = transform
+#         self.transform_pre = transform_pre
+#         self.image_folder = datasets.ImageFolder(root=self.root)
+#         self.pre_transformed_data = None  # Will be populated on first access
+
+#     def __len__(self):
+#         return len(self.image_folder)
+
+#     def __getitem__(self, idx):
+#         image_path, target = self.image_folder.imgs[idx]
+
+#         # Lazy loading of images
+#         img = Image.open(image_path).convert('RGB')
+
+#         if self.transform is not None:
+#             img_transformed = self.transform(img)
+
+#         return img_transformed, target, idx
+
+#     @property
+#     def data(self):
+#         if self.transform_pre is None:
+#             raise ValueError("Transform for dataset.data is not defined.")
+
+#         if self.pre_transformed_data is None:
+#             # Lazy loading of pre-transformed data only on the first access
+#             self.pre_transformed_data = torch.stack([self.transform_pre(img).permute(1, 2, 0) for img, _ in self.image_folder]).numpy()
+
+#         return self.pre_transformed_data
+    
+#     @property
+#     def targets(self):
+#         return [label for _, label in self.image_folder.imgs]
+
+    # @property
+    # def data(self):
+    #     return self.images.transpose(0, 2, 3, 1)
+
+    # @property
+    # def targets(self):
+    #     return self.labels
