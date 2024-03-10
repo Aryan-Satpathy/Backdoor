@@ -21,7 +21,7 @@ parser = argparse.ArgumentParser(description='CTRL Training')
 
 ### dataloader
 parser.add_argument('--data_path', default='data/')
-parser.add_argument('--dataset', default='cifar10', choices=['cifar10', 'cifar100', 'imagenet-100'])
+parser.add_argument('--dataset', default='cifar10', choices=['cifar10', 'cifar100', 'imagenet100'])
 parser.add_argument('--image_size', default = 32, type=int)
 parser.add_argument('--disable_normalize', action='store_true', default=True)
 parser.add_argument('--full_dataset', action='store_true', default=True)
@@ -32,7 +32,7 @@ parser.add_argument('--num_workers', default=4, type=int)
 
 ### training
 parser.add_argument('--arch', default='resnet18', type=str, choices=['resnet18', 'resnet50', 'resnet101', 'shufflenet', 'mobilenet', 'squeezenet'])
-parser.add_argument('--method', default = 'simclr', choices=['simclr',  'byol'])
+parser.add_argument('--method', default = 'simclr', choices=['simclr',  'byol', 'moco', 'simsiam'])
 parser.add_argument('--batch_size', default = 512, type=int)
 parser.add_argument('--epochs', default = 1000, type=int)
 parser.add_argument('--start_epoch', default = 0, type=int)
@@ -52,7 +52,7 @@ parser.add_argument('--lr', default=0.06, type=float)
 parser.add_argument('--wd', default=5e-4, type=float)
 parser.add_argument('--cos', action='store_true', default=True)
 parser.add_argument('--byol-m', default=0.996, type=float)
-
+parser.add_argument('--moco-m', default=0.999, type=float)
 
 
 ###poisoning
