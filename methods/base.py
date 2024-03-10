@@ -99,7 +99,6 @@ class CLTrainer():
                 v1 = train_transform(images)
                 v2 = train_transform(images)
 
-
                 # compute representations
                 if self.args.method == 'simclr':
                     features = model(v1, v2)
@@ -115,7 +114,13 @@ class CLTrainer():
                     loss = model.criterion(*features)
 
                 elif self.args.method == 'moco':
-                    pass
+                    features= model(v1, v2)
+                    loss = model.criterion(*features)
+                
+                elif self.args.method =='simsiam':
+                    features = model(v1, v2)
+                    loss = model.criterion(*features)
+
                 # loss = model(v1, v2)
 
                 # loss = model.loss(reps)
@@ -217,7 +222,6 @@ class CLTrainer():
                 v1 = train_transform(images)
                 v2 = train_transform(images)
 
-
                 if self.args.method == 'simclr':
                     features = model(v1, v2)
 
@@ -233,16 +237,13 @@ class CLTrainer():
 
                 elif self.args.method == 'moco':
 
-                    loss = model(v1, v2)
+                    features= model(v1, v2)
+                    loss = model.criterion(*features)
 
+                elif self.args.method =='simsiam':
+                    features = model(v1, v2)
+                    loss = model.criterion(*features)
 
-
-
-
-
-                # loss = model(v1, v2)
-
-                # loss = model.loss(reps)
                 losses.update(loss.item(), images[0].size(0))
                 cl_losses.update(loss.item(), images[0].size(0))
 
