@@ -88,57 +88,113 @@ class CLTrainer():
             # 1 epoch training
             start = time.time()
 
-            for i, (images, _, _) in enumerate(train_loader):
+            if 'cifar' in self.args.dataset:
 
-                images = images.cuda(self.args.gpu, non_blocking=True)
+                for i, (images, _, _) in enumerate(train_loader):
+
+                    images = images.cuda(self.args.gpu, non_blocking=True)
+
+                    v1 = train_transform(images)
+                    v2 = train_transform(images)
 
 
+                    # compute representations
+                    if self.args.method == 'simclr':
+                        features = model(v1, v2)
+
+                        loss, _, _ = model.criterion(features)
+
+                    elif self.args.method == 'simsiam':
+                        features = model(v1, v2)
+                        loss = model.criterion(*features)
+
+                    elif self.args.method == 'byol':
+                        features = model(v1, v2)
+                        loss = model.criterion(*features)
+
+                    elif self.args.method == 'moco':
+                        features= model(v1, v2)
+                        loss = model.criterion(*features)
+                    
+                    elif self.args.method =='simsiam':
+                        features = model(v1, v2)
+                        loss = model.criterion(*features)
+
+                    # loss = model(v1, v2)
+
+                    # loss = model.loss(reps)
+
+                    losses.update(loss.item(), images[0].size(0))
+                    cl_losses.update(loss.item(), images[0].size(0))
+
+                    # compute gradient and do SGD step
+                    optimizer.zero_grad()
+
+                    loss.backward()
+
+                    optimizer.step()
 
 
+            elif 'imagenet' in self.args.dataset:
 
-                v1 = train_transform(images)
-                v2 = train_transform(images)
-
-                # compute representations
-                if self.args.method == 'simclr':
-                    features = model(v1, v2)
-
-                    loss, _, _ = model.criterion(features)
-
-                elif self.args.method == 'simsiam':
-                    features = model(v1, v2)
-                    loss = model.criterion(*features)
-
-                elif self.args.method == 'byol':
-                    features = model(v1, v2)
-                    loss = model.criterion(*features)
-
-                elif self.args.method == 'moco':
-                    features= model(v1, v2)
-                    loss = model.criterion(*features)
                 
-                elif self.args.method =='simsiam':
-                    features = model(v1, v2)
-                    loss = model.criterion(*features)
+                for i, (images, _) in enumerate(train_loader):
 
-                # loss = model(v1, v2)
+                    images = images.cuda(self.args.gpu, non_blocking=True)
 
-                # loss = model.loss(reps)
+                    v1 = train_transform(images)
+                    v2 = train_transform(images)
 
-                losses.update(loss.item(), images[0].size(0))
-                cl_losses.update(loss.item(), images[0].size(0))
 
-                # compute gradient and do SGD step
-                optimizer.zero_grad()
+                    # compute representations
+                    if self.args.method == 'simclr':
+                        features = model(v1, v2)
 
-                loss.backward()
+                        loss, _, _ = model.criterion(features)
 
-                optimizer.step()
 
+                    elif self.args.method == 'byol':
+                        features = model(v1, v2)
+                        loss = model.criterion(*features)
+
+                    elif self.args.method == 'moco':
+                        features= model(v1, v2)
+                        loss = model.criterion(*features)
+                    
+                    elif self.args.method =='simsiam':
+                        features = model(v1, v2)
+                        loss = model.criterion(*features)
+
+                    # loss = model(v1, v2)
+
+                    # loss = model.loss(reps)
+
+                    losses.update(loss.item(), images[0].size(0))
+                    cl_losses.update(loss.item(), images[0].size(0))
+
+                    # compute gradient and do SGD step
+                    optimizer.zero_grad()
+
+                    loss.backward()
+
+                    optimizer.step()
+                
             # KNN-eval
             if self.args.knn_eval_freq != 0 and epoch % self.args.knn_eval_freq == 0:
-                knn_acc = knn_monitor(model.backbone, memory_loader, test_loader, epoch, classes=self.args.num_classes,
-                                      subset= False)
+
+                if self.args.dataset == 'imagenet100':
+
+                    knn_acc = knn_monitor(model.backbone, memory_loader, test_loader, epoch, classes=self.args.num_classes,
+                                        subset= False,imagenet=True)
+                    
+
+                else:
+
+                    knn_acc = knn_monitor(model.backbone, memory_loader, test_loader, epoch, classes=self.args.num_classes,
+                                        subset= False,imagenet=False)
+
+
+                    
 
             print('[{}-epoch] time:{:.3f} | knn acc: {:.3f} | loss:{:.3f} | cl_loss:{:.3f}'.format(epoch + 1,
                                                                                                    time.time() - start,
@@ -222,14 +278,11 @@ class CLTrainer():
                 v1 = train_transform(images)
                 v2 = train_transform(images)
 
+
                 if self.args.method == 'simclr':
                     features = model(v1, v2)
 
                     loss, _, _ = model.criterion(features)
-
-                elif self.args.method == 'simsiam':
-                    features = model(v1, v2)
-                    loss = model.criterion(*features)
 
                 elif self.args.method == 'byol':
                     features = model(v1, v2)
@@ -244,6 +297,10 @@ class CLTrainer():
                     features = model(v1, v2)
                     loss = model.criterion(*features)
 
+
+                # loss = model(v1, v2)
+
+                # loss = model.loss(reps)
                 losses.update(loss.item(), images[0].size(0))
                 cl_losses.update(loss.item(), images[0].size(0))
 
@@ -267,10 +324,9 @@ class CLTrainer():
                                                      backdoor_loader=test_back_loader,
                                                      )
 
-            print('[{}-epoch] time:{:.3f} | colorspace: {} | knn acc: {:.3f} | back acc: {:.3f} | loss:{:.3f} | cl_loss:{:.3f}'.format(
+            print('[{}-epoch] time:{:.3f} | knn acc: {:.3f} | back acc: {:.3f} | loss:{:.3f} | cl_loss:{:.3f}'.format(
                 epoch + 1,
                 time.time() - start,
-                self.args.ctype,
                 knn_acc, back_acc, losses.avg,
                 cl_losses.avg))
 
@@ -311,61 +367,17 @@ class CLTrainer():
 
             print('last epoch saved')
 
-    def augment_color(self, data, ctype="YUV"):
-        if ctype == "RGB":
-            return data
-        if ctype == "YUV":
-            return kornia.color.rgb_to_yuv(data)
-        if ctype == "Y":
-            data = kornia.color.rgb_to_yuv(data)
-            data[:, 1, ...] = data[:, 0, ...]
-            data[:, 2, ...] = data[:, 0, ...]
-            return data
-        if ctype == "U":
-            data = kornia.color.rgb_to_yuv(data)
-            data[:, 0, ...] = data[:, 1, ...]
-            data[:, 2, ...] = data[:, 1, ...]
-            return data
-        if ctype == "V":
-            data = kornia.color.rgb_to_yuv(data)
-            data[:, 0, ...] = data[:, 2, ...]
-            data[:, 1, ...] = data[:, 2, ...]
-            return data
-        if ctype == "HLS":
-            data = kornia.color.rgb_to_hls(data)
-            data[:, 0, ...] = data[:, 1, ...]
-            data[:, 2, ...] = data[:, 1, ...]
-            return data
-        if ctype == "HSV":
-            data = kornia.color.rgb_to_hsv(data)
-            data[:, 0, ...] = data[:, 2, ...]
-            data[:, 1, ...] = data[:, 2, ...]
-            return data
-        if ctype == "LUV":
-            data = kornia.color.rgb_to_luv(data)
-            data[:, 1, ...] = data[:, 0, ...]
-            data[:, 2, ...] = data[:, 0, ...]
-            return data
-        if ctype == "LAB":
-            data = kornia.color.rgb_to_lab(data)
-            data[:, 1, ...] = data[:, 0, ...]
-            data[:, 2, ...] = data[:, 0, ...]
-            return data
-        if ctype == "YCbCr":
-            data = kornia.color.rgb_to_ycbcr(data)
-            data[:, 1, ...] = data[:, 0, ...]
-            data[:, 2, ...] = data[:, 0, ...]
-            return data
-
     @torch.no_grad()
     def knn_monitor_fre(self, net, memory_data_loader, test_data_loader, epoch, args, k=200, t=0.1, hide_progress=True,
                          classes=-1, subset=False, backdoor_loader=None):
 
+        #print('Entering correct function')
         net.eval()
 
         total_top1, total_top5, total_num, feature_bank = 0.0, 0.0, 0, []
         # generate feature bank
         for data, target, _ in tqdm(memory_data_loader, desc='Feature extracting', leave=False, disable=hide_progress):
+         #   print(f'Target:{target}')
             feature = net(data.cuda(non_blocking=True))
 
             feature = F.normalize(feature, dim=1)
@@ -376,18 +388,19 @@ class CLTrainer():
         # feature_labels: [total num]
 
         feature_labels =  torch.tensor(memory_data_loader.dataset[:][1], device=feature_bank.device)
+        #print(f'feature_labels:{feature_labels}')
 
 
         # loop test data to predict the label by weighted knn search
         test_bar = tqdm(test_data_loader, desc='kNN', disable=hide_progress)
         for data, target, _ in test_bar:
-            data = self.augment_color(data, self.args.ctype)
+            #print(f'RANDI{data.size(0)}')
             data, target = data.cuda(non_blocking=True), target.cuda(non_blocking=True)
             feature = net(data)
             feature = F.normalize(feature, dim=1)
             # feature: [bsz, dim]
             pred_labels = self.knn_predict(feature, feature_bank, feature_labels, classes, k, t)
-
+            
             total_num += data.size(0)
             total_top1 += (pred_labels[:, 0] == target).float().sum().item()
             test_bar.set_postfix({'Accuracy': total_top1 / total_num * 100})
@@ -400,19 +413,20 @@ class CLTrainer():
             backdoor_top1, backdoor_num = 0.0, 0
             backdoor_test_bar = tqdm(backdoor_loader, desc='kNN', disable=hide_progress)
             for data, target, _ in backdoor_test_bar:
-                data = self.augment_color(data, self.args.ctype)
                 data, target = data.cuda(non_blocking=True), target.cuda(non_blocking=True)
 
                 feature = net(data)
                 feature = F.normalize(feature, dim=1)
                 # feature: [bsz, dim]
                 pred_labels = self.knn_predict(feature, feature_bank, feature_labels, classes, k, t)
+                #print(f'pred_labels:{pred_labels}')
 
                 backdoor_num += data.size(0)
                 backdoor_top1 += (pred_labels[:, 0] == target).float().sum().item()
                 test_bar.set_postfix({'Accuracy': backdoor_top1 / backdoor_num * 100})
 
-
+            # print(data.shape)
+            #print(f'total_num:{total_num},backdoor_num:{backdoor_num}')
             return total_top1 / total_num * 100, backdoor_top1 / backdoor_num * 100
 
         return total_top1 / total_num * 100
@@ -441,4 +455,5 @@ class CLTrainer():
 
         pred_labels = pred_scores.argsort(dim=-1, descending=True)
         return pred_labels
+
 
