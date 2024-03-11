@@ -92,11 +92,11 @@ class PoisonAgent():
                 y_memory_np.append(label)
         
             x_train_np = np.array(x_train_np).astype(np.float32)
-            x_train_np/= 255.
+            #x_train_np/= 255.
             x_test_np = np.array(x_test_np).astype(np.float32)
-            x_test_np/= 255.
+            #x_test_np/= 255.
             x_memory_np = np.array(x_memory_np).astype(np.float32)
-            x_memory_np/= 255. 
+            #x_memory_np/= 255. 
             y_train_np = np.array(y_train_np)
             y_test_np = np.array(y_test_np)
             y_memory_np = np.array(y_memory_np)
