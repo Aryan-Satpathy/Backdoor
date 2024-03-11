@@ -394,7 +394,7 @@ class CLTrainer():
         # loop test data to predict the label by weighted knn search
         test_bar = tqdm(test_data_loader, desc='kNN', disable=hide_progress)
         for data, target, _ in test_bar:
-            #print(f'RANDI{data.size(0)}')
+            
             data, target = data.cuda(non_blocking=True), target.cuda(non_blocking=True)
             feature = net(data)
             feature = F.normalize(feature, dim=1)
