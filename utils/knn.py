@@ -20,16 +20,24 @@ def inject(poison, batch_data, trigger=None):
     return torch.cat(batch_data_trigger, dim=0)
 
 @torch.no_grad()
-def knn_monitor(net, memory_data_loader, test_data_loader, epoch, k=200, t=0.1, hide_progress=True, classes=-1, subset=False, backdoor_loader=None, trigger=None, poison=None):
+def knn_monitor(net, memory_data_loader, test_data_loader, epoch, k=200, t=0.1, hide_progress=True, classes=-1, subset=False, backdoor_loader=None, trigger=None, poison=None, imagenet=False):
     net.eval()
 
     total_top1, total_top5, total_num, feature_bank = 0.0, 0.0, 0, []
     # generate feature bank
-    for data, target, _ in tqdm(memory_data_loader, desc='Feature extracting', leave=False, disable=hide_progress):
-        feature = net(data.cuda(non_blocking=True))
-        # print(feature.shape)
-        feature = F.normalize(feature, dim=1)
-        feature_bank.append(feature)
+    if imagenet:
+        for data, target in tqdm(memory_data_loader, desc='Feature extracting', leave=False, disable=hide_progress):
+            feature = net(data.cuda(non_blocking=True))
+            # print(feature.shape)
+            feature = F.normalize(feature, dim=1)
+            feature_bank.append(feature)
+
+    else:
+        for data, target, _ in tqdm(memory_data_loader, desc='Feature extracting', leave=False, disable=hide_progress):
+            feature = net(data.cuda(non_blocking=True))
+            # print(feature.shape)
+            feature = F.normalize(feature, dim=1)
+            feature_bank.append(feature)        
     # feature_bank: [dim, total num]
     feature_bank = torch.cat(feature_bank, dim=0).t().contiguous()
     # feature_labels: [total num]
@@ -42,33 +50,61 @@ def knn_monitor(net, memory_data_loader, test_data_loader, epoch, k=200, t=0.1, 
     
     # loop test data to predict the label by weighted knn search
     test_bar = tqdm(test_data_loader, desc='kNN', disable=hide_progress)
-    for data, target, _  in test_bar:
-        data, target = data.cuda(non_blocking=True), target.cuda(non_blocking=True)
-        feature= net(data)
-        feature = F.normalize(feature, dim=1)
-        # feature: [bsz, dim]
-        pred_labels = knn_predict(feature, feature_bank, feature_labels, classes, k, t)
-
-        total_num += data.size(0)
-        total_top1 += (pred_labels[:, 0] == target).float().sum().item()
-        test_bar.set_postfix({'Accuracy':total_top1 / total_num * 100})
-
-    if backdoor_loader is not None:
-        backdoor_top1, backdoor_num = 0.0, 0
-        backdoor_test_bar = tqdm(backdoor_loader, desc='kNN', disable=hide_progress)
-        for data, target, _ in backdoor_test_bar:
-            data, target = data.cuda(non_blocking=True), target.cuda(non_blocking=True)
-            ###inject trigger
-            data = inject(poison, data, trigger)
-
-            feature = net(data)
+    
+    if imagenet:
+        for data, target in test_bar:
+            feature = net(data.cuda(non_blocking=True))
             feature = F.normalize(feature, dim=1)
             # feature: [bsz, dim]
             pred_labels = knn_predict(feature, feature_bank, feature_labels, classes, k, t)
 
-            backdoor_num += data.size(0)
-            backdoor_top1 += (pred_labels[:, 0] == target).float().sum().item()
-            test_bar.set_postfix({'Accuracy': backdoor_top1 / backdoor_num * 100})
+            total_num += data.size(0)
+            total_top1 += (pred_labels[:, 0] == target.cuda(non_blocking=True)).float().sum().item()
+            test_bar.set_postfix({'Accuracy':total_top1 / total_num * 100})
+    
+    else:
+        for data, target, _  in test_bar:
+            data, target = data.cuda(non_blocking=True), target.cuda(non_blocking=True)
+            feature= net(data)
+            feature = F.normalize(feature, dim=1)
+            # feature: [bsz, dim]
+            pred_labels = knn_predict(feature, feature_bank, feature_labels, classes, k, t)
+
+            total_num += data.size(0)
+            total_top1 += (pred_labels[:, 0] == target).float().sum().item()
+            test_bar.set_postfix({'Accuracy':total_top1 / total_num * 100})
+
+    if backdoor_loader is not None:
+        backdoor_top1, backdoor_num = 0.0, 0
+        backdoor_test_bar = tqdm(backdoor_loader, desc='kNN', disable=hide_progress)
+        
+        if imagenet:
+            
+            for data, target in backdoor_test_bar:
+                feature = net(data.cuda(non_blocking=True))
+                feature = F.normalize(feature, dim=1)
+                # feature: [bsz, dim]
+                pred_labels = knn_predict(feature, feature_bank, feature_labels, classes, k, t)
+
+                backdoor_num += data.size(0)
+                backdoor_top1 += (pred_labels[:, 0] == target.cuda(non_blocking=True)).float().sum().item()
+                test_bar.set_postfix({'Accuracy': backdoor_top1 / backdoor_num * 100})
+        
+        else:
+
+            for data, target, _ in backdoor_test_bar:
+                data, target = data.cuda(non_blocking=True), target.cuda(non_blocking=True)
+                ###inject trigger
+                data = inject(poison, data, trigger)
+
+                feature = net(data)
+                feature = F.normalize(feature, dim=1)
+                # feature: [bsz, dim]
+                pred_labels = knn_predict(feature, feature_bank, feature_labels, classes, k, t)
+
+                backdoor_num += data.size(0)
+                backdoor_top1 += (pred_labels[:, 0] == target).float().sum().item()
+                test_bar.set_postfix({'Accuracy': backdoor_top1 / backdoor_num * 100})
 
         return total_top1 / total_num * 100, backdoor_top1 / backdoor_num * 100
 
@@ -99,3 +135,4 @@ def knn_predict(feature, feature_bank, feature_labels, classes, knn_k, knn_t):
 
     pred_labels = pred_scores.argsort(dim=-1, descending=True)
     return pred_labels
+
