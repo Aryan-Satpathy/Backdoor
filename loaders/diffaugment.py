@@ -127,7 +127,7 @@ class PoisonAgent():
         poison_index = poison_index[:self.poison_num]
 
 
-        if self.args.threat_model == 'our':
+        if self.args.threat_model == 'ctrl':
 
             x_train_tensor[poison_index], y_train_tensor[poison_index] = self.fre_poison_agent.Poison_Frequency_Diff(x_train_tensor[poison_index], y_train_tensor[poison_index], self.magnitude)
             x_test_pos_tensor, y_test_pos_tensor = self.fre_poison_agent.Poison_Frequency_Diff(x_test_tensor.clone().detach(), y_test_tensor.clone().detach(), self.magnitude)
