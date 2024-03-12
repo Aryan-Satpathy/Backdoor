@@ -206,7 +206,7 @@ def set_aug_diff(args):
         std = (0.229, 0.224, 0.225)
         args.size = 64
         args.save_freq = 100
-        args.num_classes = 9
+        args.num_classes = 100
 
     else:
         raise ValueError(args.dataset)
