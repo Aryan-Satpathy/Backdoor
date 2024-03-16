@@ -101,6 +101,10 @@ parser.add_argument(
     help="color space used for accuracy calculation",
 )
 
+## Checkpointing
+parser.add_argument('--resume_training', action='store_true',
+                    help='resume training', default=False)
+parser.add_argument('--resume_path', default='none', type=str)
 
 args = parser.parse_args()
 
@@ -150,15 +154,17 @@ def main_worker(gpu,  args):
     # create model
     print("=> creating cnn model '{}'".format(args.arch))
     model = set_model(args)
+    
 
     # constrcut trainer
     trainer = CLTrainer(args)
 
     torch.cuda.set_device(args.gpu)
     model = model.cuda(args.gpu)
-
-
-
+    
+    if args.resume_training:
+        print('Resuming training from {}'.format(args.resume_path))
+        model.load_state_dict(torch.load(args.resume_path)['state_dict'])
 
     # create data loader
     train_loader, train_sampler, train_dataset, ft_loader, ft_sampler, test_loader, test_dataset, memory_loader, train_transform, ft_transform, test_transform = set_aug_diff(args)
