@@ -12,3 +12,4 @@ tqdm
 warmup_scheduler
 PyWavelets
 tensorboard
+torch_dct
