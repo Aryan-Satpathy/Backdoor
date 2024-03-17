@@ -308,9 +308,9 @@ def set_aug_diff(args):
 
     elif args.dataset == 'imagenet100':
 
-        train_path= os.path.join(args.data_path, "train")
+        train_path= os.path.join(args.data_path, "imagenet100/train")
 
-        test_path = os.path.join(args.data_path,"val")
+        test_path = os.path.join(args.data_path,"imagenet100/val")
 
         train_dataset = datasets.ImageFolder(root=train_path,
                                           transform=transform_load,
