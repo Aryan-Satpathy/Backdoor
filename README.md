@@ -52,7 +52,14 @@ When repeating the same experiment with different hyperparameters, use `--suffix
 
 ## To Do
 - [ ] Implement ImageNet 100
-- [ ] Implement MoCo v2
 - [ ] Remove unnecessary command line arguments and refactor code.
+
+### New Methods
+- [ ] [JEPA](https://ai.meta.com/blog/yann-lecun-ai-model-i-jepa/)
+- [ ] MoCo v2
+
+### New Datasets / Benchmarks
+- [ ] ImageNet
+- [ ] https://robustbench.github.io/
 
 #### NOTE: This repository is a fork of [CTRL's repository](https://github.com/meet-cjli/CTRL) with refactoring, implementation of defenses and other attacks.
