@@ -12,6 +12,7 @@ import glob
 from typing import Callable, Tuple
 import torch
 import torch.nn as nn
+import torch_dct
 
 from torch.utils.data import SubsetRandomSampler
 import torchvision.transforms as transforms
@@ -21,6 +22,7 @@ from kornia import augmentation as aug
 import kornia
 from torch.utils.data import Dataset
 import natsort
+from torchvision.transforms.v2.functional import pil_to_tensor, to_pil_image
 
 
 
@@ -31,7 +33,38 @@ class Subset(torch.utils.data.Subset):
         """Call this only if all attributes of Subset are exhausted."""
         return getattr(self.dataset, name)
 
+        import torch_dct
 
+def mask(x: torch.Tensor, s1: int, e1: int, s2: int, e2: int):
+    if s1 == e1 and s2 == e2: return x
+    
+    if s1 > e1: s1, e1 = e1, s1
+    if s2 > e2: s2, e2 = e2, s2
+    if s1 == s2 and s1 == 0: s1 = s1 + 1
+    
+    x[..., s1:e1, s2:e2] = 0
+    return x
+
+@torch.no_grad
+def freqPatch(x: torch.Tensor):
+    h, w = x.shape[-2:]
+    assert h == w
+
+    x_copy = x #.clone()
+    x = torch_dct.dct_2d(x_copy)
+
+    @torch.jit.script
+    def scripted_part(x: torch.Tensor):
+        se = torch.randint(0, x.shape[-1]+1, (x.shape[0], 4), device = x.device)
+        
+        # se[:, 0] += torch.all(torch.stack([se[:, 0] == se[:, 2], se[:, 0] == 0])).to(se.dtype) 
+
+        results = [torch.jit.fork(mask, x[b], se[b,0], se[b,1], se[b,2], se[b,3]) for b in range(x.shape[0])]
+        results = [torch.jit.wait(result) for result in results]
+
+        return torch.stack(results, 0)
+
+    return torch_dct.idct_2d(scripted_part(x)) 
 
 class PoisonAgent():
     def __init__(self, args, fre_agent, trainset, validset, memory_loader, magnitude):
@@ -238,6 +271,10 @@ def set_aug_diff(args):
     if args.blur:
         train_tform_list.append(aug.RandomGaussianBlur(3, [0.1, 2], p = 0.5))
         ft_tform_list.append(aug.RandomGaussianBlur(3, [0.1, 2], p = 0.5))
+
+    if args.freqPatch:
+        train_tform_list.append(transforms.RandomApply([freqPatch], p = 0.5))
+        ft_tform_list.append(transforms.RandomApply([freqPatch], p = 0.5))
 
     if 'cifar' in args.dataset   or args.dataset == 'imagenet100':
 

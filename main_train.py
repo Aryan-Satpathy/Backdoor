@@ -33,7 +33,7 @@ parser.add_argument('--num_workers', default=4, type=int)
 ### training
 parser.add_argument('--arch', default='resnet18', type=str, choices=['resnet18', 'resnet50', 'resnet101', 'shufflenet', 'mobilenet', 'squeezenet'])
 parser.add_argument('--method', default = 'simclr', choices=['simclr',  'byol', 'moco', 'simsiam'])
-parser.add_argument('--batch_size', default = 512, type=int)
+parser.add_argument('--batch_size', default = 2048, type=int)
 parser.add_argument('--epochs', default = 1000, type=int)
 parser.add_argument('--start_epoch', default = 0, type=int)
 parser.add_argument('--remove', default = 'none', choices=['crop', 'flip', 'color', 'gray', 'none'])
@@ -91,6 +91,8 @@ parser.add_argument('--seed', default=None, type=int,
 ###our arguments
 parser.add_argument('--blur', action='store_true',
                     help='blur augmentation', default=False)
+parser.add_argument('--freqPatch', action='store_true',
+                    help='freqPatch augmentation', default=False)
 parser.add_argument('--value_channel', action='store_true',
                     help='value augmentation', default=False)
 ### defense
@@ -161,10 +163,25 @@ def main_worker(gpu,  args):
 
     torch.cuda.set_device(args.gpu)
     model = model.cuda(args.gpu)
+
+        # create optimizer
+    optimizer = optim.SGD(model.parameters(),
+                        lr=args.lr,
+                        momentum=0.9,
+                        weight_decay=args.wd)
     
+    # if args.resume_training:
+    #     print('Resuming training from {}'.format(args.resume_path))
+    #     model.load_state_dict(torch.load(args.resume_path)['state_dict'])
+
     if args.resume_training:
-        print('Resuming training from {}'.format(args.resume_path))
-        model.load_state_dict(torch.load(args.resume_path)['state_dict'])
+        checkpoint_path = args.saved_path + '/last.pth.tar'
+        if os.path.exists(checkpoint_path):
+            checkpoint = torch.load(checkpoint_path)
+            model.load_state_dict(checkpoint['state_dict'])
+            optimizer.load_state_dict(checkpoint['optimizer'])
+            args.start_epoch = checkpoint['epoch']
+            print(f"Resumed training from epoch {args.start_epoch}")
 
     # create data loader
     train_loader, train_sampler, train_dataset, ft_loader, ft_sampler, test_loader, test_dataset, memory_loader, train_transform, ft_transform, test_transform = set_aug_diff(args)
@@ -175,14 +192,6 @@ def main_worker(gpu,  args):
     if args.poisoning:
             poison_frequency_agent = PoisonFre(args, args.size, args.channel, args.window_size, args.trigger_position,  False,  True)
             poison = PoisonAgent(args, poison_frequency_agent, train_dataset, test_dataset, memory_loader, args.magnitude)
-
-
-
-    # create optimizer
-    optimizer = optim.SGD(model.parameters(),
-                        lr=args.lr,
-                        momentum=0.9,
-                        weight_decay=args.wd)
 
 
     # Train

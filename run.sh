@@ -101,7 +101,7 @@ elif [ "$defense" == "both" ]; then
     augmentation="--blur --value_channel"
 fi
 
-poison_ratio=0.5
+poison_ratio=0.01
 if [ "$dataset" != "cifar10" ]; then
     poison_ratio=$(awk "BEGIN {print $poison_ratio / 5; exit}")
 fi
@@ -111,4 +111,4 @@ fi
 
 MYPATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 
-python main_train.py $poisoned --dataset $dataset $augmentation --ctype $ctype --method $method --threat_model ${threat_model} --channel 1 2 --trigger_position 15 31 --poison_ratio $poison_ratio --lr 0.06 --wd 0.0005 --magnitude 100.0 --poisoning --epochs 800 --gpu 0 --window_size 32 --saved_path "${MYPATH}/saves/${job_name}/"
+python main_train.py $poisoned --resume_training --freqPatch --dataset $dataset $augmentation --ctype $ctype --method $method --threat_model ${threat_model} --channel 1 2 --trigger_position 15 31 --poison_ratio $poison_ratio --lr 0.06 --wd 0.0005 --magnitude 100.0 --poisoning --epochs 700 --gpu 0 --window_size 32 --saved_path "${MYPATH}/saves/${job_name}/"
