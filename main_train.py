@@ -175,7 +175,7 @@ def main_worker(gpu,  args):
     #     model.load_state_dict(torch.load(args.resume_path)['state_dict'])
 
     if args.resume_training:
-        checkpoint_path = args.saved_path + '/last.pth.tar'
+        checkpoint_path = args.saved_path + '/epoch_401.pth.tar'
         if os.path.exists(checkpoint_path):
             checkpoint = torch.load(checkpoint_path)
             model.load_state_dict(checkpoint['state_dict'])

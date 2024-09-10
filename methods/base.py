@@ -250,7 +250,7 @@ class CLTrainer():
         test_back_loader = poison.test_pos_loader
 
         knn_acc = 0.
-
+        back_acc = 0.
 
         iter_num = 0
         for epoch in range(self.args.start_epoch, self.args.epochs):
