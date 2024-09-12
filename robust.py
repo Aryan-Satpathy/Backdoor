@@ -1,3 +1,6 @@
+import torch
+from autoattack import AutoAttack
+import os
 import os
 import sys 
 import argparse
@@ -120,6 +123,38 @@ parser.add_argument('--num_classes', default=10)
 args = parser.parse_args()
 
 
+# models = ["byol", "simclr", "simsiam"]
+# blurs = ["", "blur"]
+
+# for model in models:
+#     for blur in blurs:
+#         RUNNAME = f"{model}_{blur}_cifar10_ctrl"
+#         checkpoint_path = f'saves/{RUNNAME}/classifier.pt'
+
+#         if os.path.exists(checkpoint_path):
+#             checkpoint = torch.load(checkpoint_path)
+#             print(f"{RUNNAME:<30}    : acc {checkpoint['acc']}")
+
+def runAA(model, test_loader, log_path, advFlag=None):
+    model.eval()
+    acc = 0.
+    # test_loader.batch_size = 8000 if args.dataset == 'stl10' else 10000
+    test_loader = torch.utils.data.DataLoader(
+        test_loader.dataset, batch_size= 10000, shuffle=False, num_workers=0, pin_memory=True, drop_last=True)
+    adversary = AutoAttack(model, norm='Linf', eps=2/255, version='standard', log_path=log_path)
+    for images, labels in test_loader:
+        images = images.cuda()
+        labels = labels.cuda()
+        xadv = adversary.run_standard_evaluation(images, labels, bs=1000)
+        with torch.no_grad():
+            if advFlag is not None:
+                output = model.eval()(xadv, advFlag)
+            else:
+                output = model.eval()(xadv)
+        acc += (output.max(1)[1] == labels).float().sum()
+    return acc.item() 
+
+
 def main():
     print(args.saved_path)
     if args.seed is not None:
@@ -154,69 +189,28 @@ def main_worker(gpu,  args):
     torch.cuda.set_device(args.gpu)
     model = model.cuda(args.gpu)
 
-    # Load CIFAR-10 for classifier training
-    train_transform = transforms.Compose([
-        transforms.RandomResizedCrop(32),
-        transforms.RandomHorizontalFlip(),
+    # checkpoint_path = args.saved_path + f'classifier.pt'
+
+    RUNNAME = f"{args.method}_{'blur' if args.blur else ''}_cifar10_ctrl"
+    checkpoint_path = f'saves/{RUNNAME}/classifier.pt'
+
+    # Load the full checkpoint
+    checkpoint = torch.load(checkpoint_path)
+    # backbone_state_dict = {k.replace("backbone.", ""): v for k, v in checkpoint['state_dict'].items() if k.startswith("backbone.")}
+    model.load_state_dict(checkpoint["model"])
+
+
+        # Load CIFAR-10 for classifier training
+    test_transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize([0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010]),
     ])
 
-    train_dataset = torchvision.datasets.CIFAR10(root='data', train=True, download=True, transform=train_transform)
-    train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True, num_workers=16)
+    test_dataset = torchvision.datasets.CIFAR10(root='data', train=False, download=True, transform=test_transform)
+    test_loader = DataLoader(test_dataset, batch_size=128, shuffle=True, num_workers=16)
 
+    acc = runAA(model.eval(), test_loader, log_path=f'logs/{RUNNAME}', advFlag=None)
 
-    checkpoint_path = args.saved_path + f'last.pth.tar'
+    print(acc)
 
-    # Load the full checkpoint
-    checkpoint = torch.load(checkpoint_path)
-    # Extract the backbone part of the state dictionary
-    backbone_state_dict = {k.replace("backbone.", ""): v for k, v in checkpoint['state_dict'].items() if k.startswith("backbone.")}
-    # Load the backbone state dict into the model's backbone
-    model.backbone.load_state_dict(backbone_state_dict)
-
-    # Define optimizer, loss, and other settings
-    criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
-
-    # Training loop
-    for epoch in range(args.epochs):  # Train for 10 epochs
-        model.train()
-        running_loss = 0.0
-
-        correct = 0
-        total = 0
-
-        for inputs, targets in train_loader:
-            inputs, targets = inputs.to(f"cuda:{args.gpu}"), targets.to(f"cuda:{args.gpu}")
-
-            # Forward pass
-            outputs = model(classifier_input=inputs)
-            loss = criterion(outputs, targets)
-
-            # Backward pass and optimization
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-
-            running_loss += loss.item()
-
-                        # Predictions
-            _, predicted = outputs.max(1)
-            correct += predicted.eq(targets).sum().item()
-            total += targets.size(0)
-
-        running_loss = running_loss / len(train_loader)
-        train_acc = 100. * correct / total
-        # print(f"Epoch [{epoch+1}/10], Loss: {running_loss/len(train_loader)}")
-        print(f'Epoch [{epoch+1}/{args.epochs}], Loss: {running_loss:.4f}, Accuracy: {train_acc:.2f}%')
-
-    torch.save({
-    'model': model.state_dict(),
-    'optimizer': optimizer.state_dict(),
-    'epoch': epoch,
-    'acc':train_acc,
-    }, os.path.join(args.saved_path, 'classifier.pt'))
-    
-if __name__ == '__main__':
-    main()
+main()

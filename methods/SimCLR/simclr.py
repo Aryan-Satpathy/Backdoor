@@ -37,7 +37,11 @@ class SimCLRModel(CLModel):
         # Classifier head for training after loading backbone
         if args.train_classifier:
             # Create a classifier head on top of the backbone features
-            self.classifier_head = nn.Linear(self.feat_dim, args.num_classes)
+            self.classifier_head = nn.Sequential(
+                    # nn.Linear(self.feat_dim, self.feat_dim),
+                    # nn.ReLU(inplace=True),
+                    nn.Linear(self.feat_dim, args.num_classes)
+            )
 
         # Option to freeze or unfreeze backbone during classifier training
         self.freeze_backbone = args.freeze_backbone
@@ -61,6 +65,10 @@ class SimCLRModel(CLModel):
             x = self.backbone(classifier_input)
             logits = self.classifier_head(x)
             return logits
+        elif (v1 is not None) and (v2 is None):
+            x = self.backbone(v1)
+            logits = self.classifier_head(x)
+            return logits
         else:
             x = torch.cat([v1, v2], dim=0)
             x = self.backbone(x)
@@ -71,5 +79,11 @@ class SimCLRModel(CLModel):
             features = torch.cat([f1.unsqueeze(1), f2.unsqueeze(1)], dim=1)
 
             return features
+    
+    # def forward(self, classifier_input):
+    #     # Forward pass through the backbone and classifier head
+    #     x = self.backbone(classifier_input)
+    #     logits = self.classifier_head(x)
+    #     return logits
 
         

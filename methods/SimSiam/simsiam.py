@@ -30,7 +30,11 @@ class SimSiam(CLModel):
         # Classifier head for training after loading backbone
         if args.train_classifier:
             # Create a classifier head on top of the backbone features
-            self.classifier_head = nn.Linear(self.feat_dim, args.num_classes)
+            self.classifier_head = nn.Sequential(
+                    # nn.Linear(self.feat_dim, self.feat_dim),
+                    # nn.ReLU(inplace=True),
+                    nn.Linear(self.feat_dim, args.num_classes)
+            )
 
         # Option to freeze or unfreeze backbone during classifier training
         self.freeze_backbone = args.freeze_backbone
@@ -43,6 +47,10 @@ class SimSiam(CLModel):
         if classifier_input is not None:
             # Forward pass through the backbone and classifier head
             x = self.backbone(classifier_input)
+            logits = self.classifier_head(x)
+            return logits
+        elif (x1 is not None) and (x2 is None):
+            x = self.backbone(x1)
             logits = self.classifier_head(x)
             return logits
         else:
