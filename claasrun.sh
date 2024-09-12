@@ -21,7 +21,6 @@ dataset="cifar10"
 threat_model="ctrl"
 ctype="RGB"
 suffix=""
-resume=""
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -64,11 +63,6 @@ while [[ $# -gt 0 ]]; do
             ;;
         --ctype)
             ctype="$2"
-            shift
-            shift
-            ;;
-        --resume)
-            resume="$2"
             shift
             shift
             ;;
@@ -117,4 +111,4 @@ fi
 
 MYPATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 
-python main_train.py $poisoned --resume_training --resume_path $resume --freqPatch --dataset $dataset $augmentation --ctype $ctype --method $method --threat_model ${threat_model} --channel 1 2 --trigger_position 15 31 --poison_ratio $poison_ratio --lr 0.06 --wd 0.0005 --magnitude 100.0 --poisoning --epochs 700 --gpu 0 --window_size 32 --saved_path "${MYPATH}/saves/${job_name}/"
+python classifier.py $poisoned --freqPatch --dataset $dataset $augmentation --ctype $ctype --method $method --threat_model ${threat_model} --channel 1 2 --trigger_position 15 31 --poison_ratio $poison_ratio --lr 0.06 --wd 0.0005 --magnitude 100.0 --poisoning --epochs 20 --gpu 0 --window_size 32 --saved_path "${MYPATH}/saves/${job_name}/"

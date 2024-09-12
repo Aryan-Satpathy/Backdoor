@@ -7,6 +7,10 @@ from utils.frequency import PoisonFre
 
 import torch.optim as optim
 import torch.backends.cudnn as cudnn 
+import torchvision
+from torch.utils.data import DataLoader
+from torchvision import transforms
+from torch import nn
 
 
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
@@ -108,23 +112,13 @@ parser.add_argument('--resume_training', action='store_true',
                     help='resume training', default=False)
 parser.add_argument('--resume_path', default='none', type=str)
 
+## classifier
+parser.add_argument('--train_classifier', default=True)
+parser.add_argument('--freeze_backbone', default=True)
+parser.add_argument('--num_classes', default=10)
+
 args = parser.parse_args()
 
-# # for Logging
-# if args.debug: #### in the debug setting
-#         args.saved_path = os.path.join("./{}/test".format(args.log_path))
-# else:
-#         if  args.trial == 'clean':
-#               args.saved_path = os.path.join(
-#                   "./{}/{}-{}_{}-{}".format(args.log_path, args.dataset, args.method, args.arch, args.trial))
-#         else:
-#               args.saved_path = os.path.join("./{}/{}-{}-{}-{}-{}-{}-{}-{}-{}-{}".format(args.log_path, args.dataset, args.method, args.arch, args.poison_ratio, args.magnitude, args.batch_size, args.lr, args.select, args.threat_model, args.trial))
-
-
-# if not os.path.exists(args.saved_path):
-#     os.makedirs(args.saved_path)
-
-# tb_logger = tb_logger.Logger(logdir=args.saved_path, flush_secs=2)
 
 def main():
     print(args.saved_path)
@@ -156,55 +150,73 @@ def main_worker(gpu,  args):
     # create model
     print("=> creating cnn model '{}'".format(args.arch))
     model = set_model(args)
-    
-
-    # constrcut trainer
-    trainer = CLTrainer(args)
 
     torch.cuda.set_device(args.gpu)
     model = model.cuda(args.gpu)
 
-        # create optimizer
-    optimizer = optim.SGD(model.parameters(),
-                        lr=args.lr,
-                        momentum=0.9,
-                        weight_decay=args.wd)
+    # Load CIFAR-10 for classifier training
+    train_transform = transforms.Compose([
+        transforms.RandomResizedCrop(32),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        transforms.Normalize([0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010]),
+    ])
+
+    train_dataset = torchvision.datasets.CIFAR10(root='data', train=True, download=True, transform=train_transform)
+    train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True, num_workers=4)
+
+
+    checkpoint_path = args.saved_path + f'last.pth.tar'
+
+    # Load the full checkpoint
+    checkpoint = torch.load(checkpoint_path)
+    # Extract the backbone part of the state dictionary
+    backbone_state_dict = {k.replace("backbone.", ""): v for k, v in checkpoint['state_dict'].items() if k.startswith("backbone.")}
+    # Load the backbone state dict into the model's backbone
+    model.backbone.load_state_dict(backbone_state_dict)
+
+    # Define optimizer, loss, and other settings
+    criterion = nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+
+    # Training loop
+    for epoch in range(args.epochs):  # Train for 10 epochs
+        model.train()
+        running_loss = 0.0
+
+        correct = 0
+        total = 0
+
+        for inputs, targets in train_loader:
+            inputs, targets = inputs.to(f"cuda:{args.gpu}"), targets.to(f"cuda:{args.gpu}")
+
+            # Forward pass
+            outputs = model(classifier_input=inputs)
+            loss = criterion(outputs, targets)
+
+            # Backward pass and optimization
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            running_loss += loss.item()
+
+                        # Predictions
+            _, predicted = outputs.max(1)
+            correct += predicted.eq(targets).sum().item()
+            total += targets.size(0)
+
+        running_loss = running_loss / len(train_loader)
+        train_acc = 100. * correct / total
+        # print(f"Epoch [{epoch+1}/10], Loss: {running_loss/len(train_loader)}")
+        print(f'Epoch [{epoch+1}/{args.epochs}], Loss: {running_loss:.4f}, Accuracy: {train_acc:.2f}%')
+
+    torch.save({
+    'model': model.state_dict(),
+    'optimizer': optimizer.state_dict(),
+    'epoch': epoch,
+    'acc':train_acc,
+    }, os.path.join(args.saved_path, 'classifier.pt'))
     
-    # if args.resume_training:
-    #     print('Resuming training from {}'.format(args.resume_path))
-    #     model.load_state_dict(torch.load(args.resume_path)['state_dict'])
-
-    if args.resume_training:
-        checkpoint_path = args.saved_path + f'/{args.resume_path}.pth.tar'
-        if os.path.exists(checkpoint_path):
-            checkpoint = torch.load(checkpoint_path)
-            model.load_state_dict(checkpoint['state_dict'])
-            optimizer.load_state_dict(checkpoint['optimizer'])
-            args.start_epoch = checkpoint['epoch']
-            print(f"Resumed training from epoch {args.start_epoch}")
-
-    # create data loader
-    train_loader, train_sampler, train_dataset, ft_loader, ft_sampler, test_loader, test_dataset, memory_loader, train_transform, ft_transform, test_transform = set_aug_diff(args)
-
-
-
-    # create poisoning dataset
-    if args.poisoning:
-            poison_frequency_agent = PoisonFre(args, args.size, args.channel, args.window_size, args.trigger_position,  False,  True)
-            poison = PoisonAgent(args, poison_frequency_agent, train_dataset, test_dataset, memory_loader, args.magnitude)
-
-
-    # Train
-    if args.mode == 'normal':
-         trainer.train(model, optimizer, train_loader, test_loader, memory_loader, train_sampler, train_transform)
-
-
-    elif args.mode == 'frequency':
-         trainer.train_freq(model, optimizer, train_transform,  poison)
-
-
-    raise NotImplementedError
-
-
 if __name__ == '__main__':
     main()

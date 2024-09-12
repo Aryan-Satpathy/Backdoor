@@ -62,6 +62,17 @@ class BYOL(CLModel):
         self.encoder_k = nn.Sequential(self.backbone_k,
                                        self.projector_k)
 
+        # Classifier head for training after loading backbone
+        if args.train_classifier:
+            # Create a classifier head on top of the backbone features
+            self.classifier_head = nn.Linear(self.feat_dim, args.num_classes)
+
+        # Option to freeze or unfreeze backbone during classifier training
+        self.freeze_backbone = args.freeze_backbone
+        if args.freeze_backbone:
+            for param in self.backbone.parameters():
+                param.requires_grad = False
+
 
     @torch.no_grad()
     def _momentum_update_key_encoder(self):
@@ -71,21 +82,26 @@ class BYOL(CLModel):
         for param_q, param_k in zip(self.encoder_q.parameters(), self.encoder_k.parameters()):
             param_k.data = param_k.data * self.m + param_q.data * (1. - self.m)
 
-    def forward(self, x1, x2):
+    def forward(self, x1=None, x2=None, classifier_input=None):
         """
         Input:
             x1: first views of images
             x2: second views of images
         """
+        if classifier_input is not None:
+            # Forward pass through the backbone and classifier head
+            x = self.backbone(classifier_input)
+            logits = self.classifier_head(x)
+            return logits
+        else:
+            # compute key features
+            with torch.no_grad():  # no gradient to keys
+                self._momentum_update_key_encoder()  # update the key encoder
 
-        # compute key features
-        with torch.no_grad():  # no gradient to keys
-            self._momentum_update_key_encoder()  # update the key encoder
+            p1 = self.predictor(self.encoder_q(x1))  # NxC
+            z2 = self.encoder_k(x2)  # NxC
 
-        p1 = self.predictor(self.encoder_q(x1))  # NxC
-        z2 = self.encoder_k(x2)  # NxC
+            p2 = self.predictor(self.encoder_q(x2))  # NxC
+            z1 = self.encoder_k(x1)  # NxC
 
-        p2 = self.predictor(self.encoder_q(x2))  # NxC
-        z1 = self.encoder_k(x1)  # NxC
-
-        return p1, p2, z1, z2
+            return p1, p2, z1, z2

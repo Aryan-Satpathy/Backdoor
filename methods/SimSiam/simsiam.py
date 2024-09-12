@@ -26,13 +26,29 @@ class SimSiam(CLModel):
         self.projector = Projector(self.feat_dim, hidden_dim=2048, out_dim=256)
         self.predictor = Predictor(in_dim=256, hidden_dim=512, out_dim=256)
         self.encoder = nn.Sequential(self.backbone, self.projector)
+
+        # Classifier head for training after loading backbone
+        if args.train_classifier:
+            # Create a classifier head on top of the backbone features
+            self.classifier_head = nn.Linear(self.feat_dim, args.num_classes)
+
+        # Option to freeze or unfreeze backbone during classifier training
+        self.freeze_backbone = args.freeze_backbone
+        if args.freeze_backbone:
+            for param in self.backbone.parameters():
+                param.requires_grad = False
        
         
-    def forward(self, x1, x2):
-        
-        z1, z2 = self.encoder(x1), self.encoder(x2) 
-        p1, p2 = self.predictor(z1), self.predictor(z2)
-        return p1, p2, z1, z2
+    def forward(self, x1=None, x2=None, classifier_input=None):
+        if classifier_input is not None:
+            # Forward pass through the backbone and classifier head
+            x = self.backbone(classifier_input)
+            logits = self.classifier_head(x)
+            return logits
+        else:
+            z1, z2 = self.encoder(x1), self.encoder(x2) 
+            p1, p2 = self.predictor(z1), self.predictor(z2)
+            return p1, p2, z1, z2
 
 
 
