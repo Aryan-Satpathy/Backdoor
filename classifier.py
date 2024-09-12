@@ -147,6 +147,9 @@ def main_worker(gpu,  args):
     if args.gpu is not None:
         print("Use GPU: {} for training".format(args.gpu))
 
+    if args.dataset == "cifar100":
+        args.num_classes = 100
+
     # create model
     print("=> creating cnn model '{}'".format(args.arch))
     model = set_model(args)

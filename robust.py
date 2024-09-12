@@ -191,7 +191,7 @@ def main_worker(gpu,  args):
 
     # checkpoint_path = args.saved_path + f'classifier.pt'
 
-    RUNNAME = f"{args.method}_{'blur' if args.blur else ''}_cifar10_ctrl"
+    RUNNAME = f"{args.method}_{'blur' if args.blur else ''}_{args.dataset}_ctrl"
     checkpoint_path = f'saves/{RUNNAME}/classifier.pt'
 
     # Load the full checkpoint
