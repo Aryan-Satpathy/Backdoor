@@ -1,7 +1,7 @@
 # Backdoor and Adversarial Robustness for SSL
 
 <!--## Introduction -->
-This repository contains the official code implementation for our paper [Towards Adversarial Robustness And Backdoor Mitigation in SSL](https://arxiv.org/abs/2403.15918). If you find this repo useful for your work, please [cite](https://github.com/Aryan-Satpathy/Backdoor/README.md#cite-our-paper) our paper.
+This repository contains the official code implementation for our paper [Towards Adversarial Robustness And Backdoor Mitigation in SSL](https://arxiv.org/abs/2403.15918). If you find this repo useful for your work, please [cite](https://github.com/Aryan-Satpathy/Backdoor/tree/main?tab=readme-ov-file#cite-our-paper) our paper.
 
 We implement backdoor-poisoning attacks and evaluate our defense against these attacks on Image Classification Task. Backdoor attacks supported:
 - [x] CTRL: [ICCV 2023](https://arxiv.org/abs/2210.07346)
