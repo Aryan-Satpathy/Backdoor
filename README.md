@@ -1,21 +1,17 @@
-# Defense Against Backdoor Attacks in SSL
+# Backdoor and Adversarial Robustness for SSL
 
-## Introduction
-This repository contains code for our submission to ICLR workshop 24. We implement backdoor-poisoning attacks and evaluate our defense against these attacks on Image Classification Task. Attacks implemented:
+<!--## Introduction -->
+This repository contains the official code implementation for our paper [Towards Adversarial Robustness And Backdoor Mitigation in SSL](https://arxiv.org/abs/2403.15918). If you find this repo useful for your work, please [cite](https://github.com/Aryan-Satpathy/Backdoor/edit/main/README.md#cite-our-paper) our paper.
+
+We implement backdoor-poisoning attacks and evaluate our defense against these attacks on Image Classification Task. Backdoor attacks supported:
 - [x] CTRL: [ICCV 2023](https://arxiv.org/abs/2210.07346)
 - [x] FIBA: [CVPR 2022](https://arxiv.org/abs/2112.01148)
 - [x] HTBA: [CVPR 2022](https://arxiv.org/abs/1910.00033)
 
-Defenses implemented:
-  - [x] Gaussian Blur (Invariance-Equivariance)
-  - [x] Luminance (Exploiting evasiveness)
-
-Datasets implemented:
+Datasets supported:
 - [x] CIFAR 10
 - [x] CIFAR 100
 - [ ] IMAGENET 100 (100 class subset of IMAGENET)
-
-We show a successful and partly generalizable defense against backdoor attacks in SSL and lay the theoretical foundation for defense against backdoor attacks in Semantic Segmentation and Object Detection tasks.
 
 ## Installation and Requirements
 - Download the repository from [anonymous4openscience](https://anonymous.4open.science/r/Backdoor-028B).
@@ -51,15 +47,28 @@ tensorboard --logdir=saves
 When repeating the same experiment with different hyperparameters, use `--suffix` option in `run.sh` to prevent overwriting log of previous experiment.
 
 ## To Do
-- [ ] Implement ImageNet 100
-- [ ] Remove unnecessary command line arguments and refactor code.
-
-### New Methods
+#### SSL methods to add
 - [ ] [JEPA](https://ai.meta.com/blog/yann-lecun-ai-model-i-jepa/)
 - [ ] MoCo v2
 
-### New Datasets / Benchmarks
+#### New Datasets / Benchmarks
 - [ ] ImageNet
-- [ ] https://robustbench.github.io/
+- [x] https://robustbench.github.io/
 
-#### NOTE: This repository is a fork of [CTRL's repository](https://github.com/meet-cjli/CTRL) with refactoring, implementation of defenses and other attacks.
+##### NOTE: This repository uses a lot of base code from [CTRL's repository](https://github.com/meet-cjli/CTRL). We refactor their code and implement other models, defenses and attacks. We also completely rewrite the pipeline using [lightly](https://github.com/lightly-ai/lightly) for cleaner and shorter code.
+
+## License
+This code has a GPL-style license.
+
+## Cite our paper
+```
+@misc{satpathy2024adversarialrobustnessbackdoormitigation,
+      title={Towards Adversarial Robustness And Backdoor Mitigation in SSL}, 
+      author={Aryan Satpathy and Nilaksh Singh and Dhruva Rajwade and Somesh Kumar},
+      year={2024},
+      eprint={2403.15918},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV},
+      url={https://arxiv.org/abs/2403.15918}, 
+}
+```
